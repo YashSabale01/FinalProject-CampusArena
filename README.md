@@ -1,70 +1,219 @@
-# Getting Started with Create React App
+# CampusArena - Event Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A comprehensive campus event management platform built with React and Node.js, featuring real-time notifications, payment processing, and role-based access control.
 
-## Available Scripts
+## 🚀 Features
 
-In the project directory, you can run:
+### For Students
+- **Event Discovery** - Browse and search campus events by category, date, and location
+- **Event Registration** - Register for free and paid events with integrated payment system
+- **Payment Processing** - Secure payment handling with Stripe integration
+- **Real-time Updates** - Live notifications for event updates and registrations
+- **Event Reviews** - Rate and review attended events
+- **Favorites System** - Save events for quick access
+- **Discussion Forums** - Comment and discuss events with other attendees
 
-### `npm start`
+### For Administrators
+- **Event Management** - Create, update, and delete events with rich details
+- **User Management** - Manage student accounts and permissions
+- **Analytics Dashboard** - View registration statistics and revenue reports
+- **Check-in System** - QR code-based event check-in functionality
+- **Export Features** - Download registration data and generate reports
+- **Real-time Monitoring** - Track event capacity and registration status
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🛠️ Tech Stack
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Frontend
+- **React 18** - Modern UI library with hooks
+- **Tailwind CSS** - Utility-first CSS framework
+- **Axios** - HTTP client for API requests
+- **Socket.IO Client** - Real-time communication
+- **React Router** - Client-side routing
 
-### `npm test`
+### Backend
+- **Node.js** - JavaScript runtime
+- **Express.js** - Web application framework
+- **MongoDB** - NoSQL database with Mongoose ODM
+- **JWT** - JSON Web Token authentication
+- **Socket.IO** - Real-time bidirectional communication
+- **Stripe** - Payment processing integration
+- **Bcrypt** - Password hashing
+- **Helmet** - Security middleware
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 📋 Prerequisites
 
-### `npm run build`
+- Node.js (v16 or higher)
+- MongoDB (local or Atlas)
+- Stripe account (for payments)
+- Git
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🔧 Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 1. Clone the repository
+```bash
+git clone https://github.com/yourusername/campusarena.git
+cd campusarena
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 2. Install server dependencies
+```bash
+cd server
+npm install
+```
 
-### `npm run eject`
+### 3. Install client dependencies
+```bash
+cd ../client
+npm install
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 4. Environment Configuration
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Create `.env` file in the server directory:
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/campusarena
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# JWT
+JWT_SECRET=your_super_secret_jwt_key_here_make_it_long_and_random
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Server
+PORT=8000
+NODE_ENV=development
 
-## Learn More
+# CORS
+FRONTEND_URL=http://localhost:3000
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+# Email (Optional)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Admin
+DEFAULT_ADMIN_PASSWORD=Admin@123
 
-### Code Splitting
+# Stripe
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+# File Upload
+MAX_FILE_SIZE=5242880
+UPLOAD_PATH=./uploads
+```
 
-### Analyzing the Bundle Size
+### 5. Seed Database (Optional)
+```bash
+cd server
+npm run seed
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 🚀 Running the Application
 
-### Making a Progressive Web App
+### Development Mode
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+**Terminal 1 - Backend:**
+```bash
+cd server
+npm run dev
+```
 
-### Advanced Configuration
+**Terminal 2 - Frontend:**
+```bash
+cd client
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Production Mode
 
-### Deployment
+**Build Frontend:**
+```bash
+cd client
+npm run build
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+**Start Server:**
+```bash
+cd server
+npm start
+```
 
-### `npm run build` fails to minify
+## 📱 Usage
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Default Admin Accounts
+- **Username:** `admin1` | **Password:** `Admin@123`
+- **Username:** `admin2` | **Password:** `Admin@123`
+
+### Student Registration
+- Students can register through the signup form
+- All public registrations are automatically assigned Student role
+- Only admins can create other admin accounts
+
+### API Endpoints
+
+#### Authentication
+- `POST /api/auth/signup` - Register new student
+- `POST /api/auth/login` - User login
+- `GET /api/auth/profile` - Get user profile
+
+#### Events
+- `GET /api/events` - Get all events (public)
+- `POST /api/events` - Create event (admin only)
+- `POST /api/events/:id/register` - Register for event
+- `GET /api/events/my-registrations` - Get user registrations
+
+#### Payments
+- `POST /api/payments/events/:id/create-payment-intent` - Create payment
+- `POST /api/payments/events/:id/confirm-payment` - Confirm payment
+
+## 🔒 Security Features
+
+- JWT-based authentication
+- Password hashing with bcrypt
+- Rate limiting (100 requests per 15 minutes)
+- CORS protection
+- Security headers with Helmet
+- Input validation and sanitization
+- Role-based access control
+
+## 📊 Database Schema
+
+### Collections
+- **users** - User accounts and authentication
+- **events** - Campus events and registrations
+- **reviews** - Event reviews and ratings
+- **comments** - Event discussions
+- **chats** - Event chat messages
+- **favorites** - User favorite events
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Authors
+
+- **Your Name** - *Initial work* - [YourGitHub](https://github.com/yourusername)
+
+## 🙏 Acknowledgments
+
+- React team for the amazing framework
+- Express.js community for the robust backend framework
+- MongoDB for the flexible database solution
+- Stripe for secure payment processing
+- All contributors and testers
+
+## 📞 Support
+
+For support, email your-email@example.com or create an issue in this repository.
+
+---
+
+**CampusArena** - Making campus event management simple and efficient! 🎓✨

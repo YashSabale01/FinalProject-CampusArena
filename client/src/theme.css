@@ -1,0 +1,32 @@
+/* Theme CSS Variables */
+:root {
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --card-bg: #ffffff;
+}
+
+.light-theme {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.dark-theme {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Apply theme to common elements */
+.themed-card {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+.themed-text {
+  color: var(--text-primary) !important;
+}
+
+.themed-text-secondary {
+  color: var(--text-secondary) !important;
+}
