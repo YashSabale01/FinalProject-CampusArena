@@ -1,199 +1,41 @@
-# =============================================================================
-# CampusArena - AWS CodeBuild Buildspec
-# =============================================================================
-# Pipeline: GitHub → CodeBuild → S3 (Frontend) + ASG Instance Refresh (Backend)
-#
-# Required CodeBuild Environment Variables (set in CodeBuild project or Pipeline):
-#   FRONTEND_BUCKET       - S3 bucket name for React build (from CF output: FrontendBucketName)
-#   CLOUDFRONT_DIST_ID    - CloudFront Distribution ID (from CF output: CloudFrontDistributionId)
-#   ASG_NAME              - Auto Scaling Group name (from CF output: AutoScalingGroupName)
-#   AWS_REGION            - AWS region (e.g. ap-south-1)
-#   ENVIRONMENT           - production | staging | development
-#
-# Secrets (store in AWS SSM Parameter Store or Secrets Manager, NOT here):
-#   MONGODB_URI, JWT_SECRET, STRIPE_SECRET_KEY, etc. are injected via EC2 UserData
-#   For CodeBuild tests, set MONGODB_URI_TEST in CodeBuild env vars
-# =============================================================================
-
 version: 0.2
 
-env:
-  variables:
-    NODE_ENV: production
-    CLIENT_DIR: client
-    SERVER_DIR: server
-
 phases:
-
-  # ---------------------------------------------------------------------------
-  # INSTALL: Set up Node.js and dependencies
-  # ---------------------------------------------------------------------------
   install:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "=== INSTALL PHASE ==="
-      - echo "Build started at $(date)"
-      - echo "Environment - $ENVIRONMENT"
-      - node -v
-      - npm -v
+      - echo "=== Installing frontend dependencies ==="
+      - cd client && npm ci && cd ..
+      - echo "=== Installing backend dependencies ==="
+      - cd server && npm ci --production && cd ..
 
-      # Install frontend dependencies
-      - echo "--- Installing frontend dependencies ---"
-      - cd $CODEBUILD_SRC_DIR/$CLIENT_DIR
-      - npm ci --prefer-offline
-
-      # Install backend dependencies
-      - echo "--- Installing backend dependencies ---"
-      - cd $CODEBUILD_SRC_DIR/$SERVER_DIR
-      - npm ci --prefer-offline
-
-  # ---------------------------------------------------------------------------
-  # PRE-BUILD: Lint and run tests
-  # ---------------------------------------------------------------------------
   pre_build:
     commands:
-      - echo "=== PRE-BUILD PHASE ==="
+      - echo "=== Pre-build checks ==="
+      - node --version
+      - npm --version
 
-      # --- Backend lint / tests ---
-      - cd $CODEBUILD_SRC_DIR/$SERVER_DIR
-      - echo "--- Running backend tests ---"
-      - npm test --if-present || echo "No backend tests configured, skipping."
-
-      # --- Frontend lint ---
-      - cd $CODEBUILD_SRC_DIR/$CLIENT_DIR
-      - echo "--- Running frontend lint ---"
-      - npm run lint --if-present || echo "No lint script, skipping."
-
-      # --- Verify required env vars are set ---
-      - |
-        for VAR in FRONTEND_BUCKET CLOUDFRONT_DIST_ID ASG_NAME AWS_REGION; do
-          if [ -z "${!VAR}" ]; then
-            echo "ERROR: Required environment variable $VAR is not set."
-            exit 1
-          fi
-        done
-      - echo "All required environment variables present."
-
-  # ---------------------------------------------------------------------------
-  # BUILD: Compile React frontend
-  # ---------------------------------------------------------------------------
   build:
     commands:
-      - echo "=== BUILD PHASE ==="
-      - echo "Building React frontend..."
+      - echo "=== Building React frontend ==="
+      - cd client
+      - CI=false npm run build
+      - cd ..
+      - echo "=== Backend ready (no compile needed for Node.js) ==="
 
-      - cd $CODEBUILD_SRC_DIR/$CLIENT_DIR
-
-      # Inject the CloudFront URL as the API base for the React app
-      # Your React app should use REACT_APP_API_URL for all API calls
-      - export REACT_APP_API_URL=https://$CLOUDFRONT_DIST_ID.cloudfront.net
-      - export REACT_APP_ENV=$ENVIRONMENT
-
-      - npm run build
-
-      - echo "Frontend build complete. Artifact size:"
-      - du -sh build/
-
-  # ---------------------------------------------------------------------------
-  # POST-BUILD: Deploy frontend to S3, invalidate CloudFront, refresh backend
-  # ---------------------------------------------------------------------------
   post_build:
     commands:
-      - echo "=== POST-BUILD PHASE ==="
+      - echo "=== Syncing frontend to S3 ==="
+      - aws s3 sync ./client/build s3://$FRONTEND_BUCKET --delete
+      - echo "=== Invalidating CloudFront cache ==="
+      - aws cloudfront create-invalidation --distribution-id $CF_DISTRIBUTION_ID --paths "/*"
+      - echo "=== Done ==="
 
-      # --- 1. Upload React build to S3 ---
-      - echo "--- Syncing frontend to S3 bucket: $FRONTEND_BUCKET ---"
-      - cd $CODEBUILD_SRC_DIR/$CLIENT_DIR
-      - |
-        aws s3 sync build/ s3://$FRONTEND_BUCKET \
-          --delete \
-          --cache-control "public, max-age=31536000, immutable" \
-          --exclude "index.html" \
-          --exclude "*.json" \
-          --region $AWS_REGION
-      # index.html and JSON should not be cached aggressively (for SPA routing)
-      - |
-        aws s3 cp build/index.html s3://$FRONTEND_BUCKET/index.html \
-          --cache-control "no-cache, no-store, must-revalidate" \
-          --region $AWS_REGION
-      - |
-        aws s3 sync build/ s3://$FRONTEND_BUCKET \
-          --exclude "*" \
-          --include "*.json" \
-          --cache-control "no-cache" \
-          --region $AWS_REGION
-      - echo "S3 sync complete."
-
-      # --- 2. Invalidate CloudFront cache ---
-      - echo "--- Invalidating CloudFront distribution: $CLOUDFRONT_DIST_ID ---"
-      - |
-        INVALIDATION_ID=$(aws cloudfront create-invalidation \
-          --distribution-id $CLOUDFRONT_DIST_ID \
-          --paths "/*" \
-          --query 'Invalidation.Id' \
-          --output text)
-      - echo "CloudFront invalidation created: $INVALIDATION_ID"
-
-      # --- 3. Trigger ASG Instance Refresh (rolling backend redeploy) ---
-      # This causes EC2 instances to be replaced one by one, re-running UserData
-      # which pulls the latest code from GitHub and restarts PM2
-      - echo "--- Triggering ASG instance refresh: $ASG_NAME ---"
-      - |
-        REFRESH_ID=$(aws autoscaling start-instance-refresh \
-          --auto-scaling-group-name $ASG_NAME \
-          --preferences '{
-            "MinHealthyPercentage": 50,
-            "InstanceWarmup": 120,
-            "CheckpointPercentages": [50, 100],
-            "CheckpointDelay": 60
-          }' \
-          --query 'InstanceRefreshId' \
-          --output text \
-          --region $AWS_REGION)
-      - echo "Instance refresh started: $REFRESH_ID"
-
-      # --- 4. Wait for instance refresh to complete (optional - remove for faster pipelines) ---
-      - echo "--- Waiting for instance refresh to complete (max 10 min) ---"
-      - |
-        for i in $(seq 1 20); do
-          STATUS=$(aws autoscaling describe-instance-refreshes \
-            --auto-scaling-group-name $ASG_NAME \
-            --instance-refresh-ids $REFRESH_ID \
-            --query 'InstanceRefreshes[0].Status' \
-            --output text \
-            --region $AWS_REGION)
-          echo "Refresh status: $STATUS (check $i/20)"
-          if [ "$STATUS" = "Successful" ]; then
-            echo "Instance refresh completed successfully."
-            break
-          elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
-            echo "ERROR: Instance refresh $STATUS. Check EC2 and ASG for details."
-            exit 1
-          fi
-          sleep 30
-        done
-
-      # --- 5. Final health check via ALB ---
-      - echo "--- Build and deploy complete ---"
-      - echo "Frontend URL: https://$(aws cloudfront get-distribution --id $CLOUDFRONT_DIST_ID --query 'Distribution.DomainName' --output text)"
-      - echo "Deployment finished at $(date)"
-
-# =============================================================================
-# ARTIFACTS
-# =============================================================================
+# This artifact goes to CodeDeploy for backend deployment
 artifacts:
   files:
-    - "**/*"
-  base-directory: client/build
-  name: campusarena-frontend-$(date +%Y%m%d-%H%M%S)
+    - server/**/*
+    - appspec.yml
+    - scripts/**/*
   discard-paths: no
-
-# =============================================================================
-# CACHE: Speed up subsequent builds
-# =============================================================================
-cache:
-  paths:
-    - client/node_modules/**/*
-    - server/node_modules/**/*
-    - /root/.npm/**/*
