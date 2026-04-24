@@ -103,7 +103,7 @@ io.on('connection', (socket) => {
 // Make io available to routes
 app.set('io', io);
 
-server.listen(PORT, async () => {
+server.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${PORT}`);
 
   try {
