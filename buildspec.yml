@@ -1,9 +1,8 @@
+Old Buildspec
 version: 0.2
-
 env:
   parameter-store:
     REACT_APP_API_URL: /campusarena/REACT_APP_API_URL
-
 phases:
   install:
     runtime-versions:
@@ -12,47 +11,18 @@ phases:
       - echo Installing frontend dependencies...
       - cd client
       - npm ci
-      - cd ..
-
   build:
     commands:
-      # Build React frontend
       - echo Building React app...
-      - cd client
       - npm run build
-      - cd ..
-      - echo Frontend build done!
-
-      # Package backend for CodeDeploy
-      - echo Packaging backend...
-      - zip -r backend-deployment.zip server/ appspec.yml scripts/
-      - echo Backend packaged!
-
+      - echo Build done!
   post_build:
     commands:
-      # Deploy frontend to S3
-      - echo Uploading frontend to S3...
-      - aws s3 sync client/build/ s3://$FRONTEND_BUCKET --delete
-
-      # Invalidate CloudFront cache
+      - echo Uploading to S3...
+      - aws s3 sync build/ s3://$FRONTEND_BUCKET --delete
       - echo Clearing CloudFront cache...
       - aws cloudfront create-invalidation --distribution-id $CF_DIST_ID --paths "/*"
-
-      # Upload backend zip to S3
-      - echo Uploading backend to S3...
-      - aws s3 cp backend-deployment.zip s3://$FRONTEND_BUCKET/deployments/backend-deployment.zip
-
-      # Trigger CodeDeploy deployment
-      - echo Triggering CodeDeploy...
-      - |
-        aws deploy create-deployment \
-          --application-name production-CampusArena \
-          --deployment-group-name production-CampusArena-DG \
-          --s3-location bucket=$FRONTEND_BUCKET,key=deployments/backend-deployment.zip,bundleType=zip \
-          --region ap-south-1
-
-      - echo Deployment triggered!
-
+      - echo Deployment complete!
 artifacts:
   files:
     - "**/*"
