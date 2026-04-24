@@ -1,31 +1,27 @@
 version: 0.2
-
 env:
   parameter-store:
     REACT_APP_API_URL: /campusarena/REACT_APP_API_URL
-
 phases:
   install:
     runtime-versions:
       nodejs: 18
     commands:
       - echo Installing frontend dependencies...
-      - cd client && npm ci
-
+      - cd client
+      - npm ci
   build:
     commands:
       - echo Building React app...
-      - cd client && npm run build
+      - npm run build
       - echo Build done!
-
   post_build:
     commands:
       - echo Uploading to S3...
-      - cd client && aws s3 sync build/ s3://$FRONTEND_BUCKET --delete
+      - aws s3 sync build/ s3://$FRONTEND_BUCKET --delete
       - echo Clearing CloudFront cache...
       - aws cloudfront create-invalidation --distribution-id $CF_DIST_ID --paths "/*"
       - echo Deployment complete!
-
 artifacts:
   files:
     - "**/*"
