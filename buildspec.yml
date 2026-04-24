@@ -1,41 +1,33 @@
 version: 0.2
 
+env:
+  parameter-store:
+    REACT_APP_API_URL: /campusarena/REACT_APP_API_URL
+
 phases:
   install:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "=== Installing frontend dependencies ==="
-      - cd client && npm ci && cd ..
-      - echo "=== Installing backend dependencies ==="
-      - cd server && npm ci --production && cd ..
-
-  pre_build:
-    commands:
-      - echo "=== Pre-build checks ==="
-      - node --version
-      - npm --version
+      - echo Installing frontend dependencies...
+      - cd client
+      - npm ci
 
   build:
     commands:
-      - echo "=== Building React frontend ==="
-      - cd client
-      - CI=false npm run build
-      - cd ..
-      - echo "=== Backend ready (no compile needed for Node.js) ==="
+      - echo Building React app...
+      - npm run build
+      - echo Build done!
 
   post_build:
     commands:
-      - echo "=== Syncing frontend to S3 ==="
-      - aws s3 sync ./client/build s3://$FRONTEND_BUCKET --delete
-      - echo "=== Invalidating CloudFront cache ==="
-      - aws cloudfront create-invalidation --distribution-id $CF_DISTRIBUTION_ID --paths "/*"
-      - echo "=== Done ==="
+      - echo Uploading to S3...
+      - aws s3 sync build/ s3://$FRONTEND_BUCKET --delete
+      - echo Clearing CloudFront cache...
+      - aws cloudfront create-invalidation --distribution-id $CF_DIST_ID --paths "/*"
+      - echo Deployment complete!
 
-# This artifact goes to CodeDeploy for backend deployment
 artifacts:
   files:
-    - server/**/*
-    - appspec.yml
-    - scripts/**/*
-  discard-paths: no
+    - "**/*"
+  base-directory: client/build
