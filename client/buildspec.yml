@@ -1,0 +1,48 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo "=== Installing frontend dependencies ==="
+      - cd client
+      - npm ci --prefer-offline
+
+  pre_build:
+    commands:
+      - echo "=== Pre-build: injecting env vars ==="
+      - echo "API URL: $REACT_APP_API_URL"
+      - echo "Build started at $(date)"
+
+  build:
+    commands:
+      - echo "=== Building React app ==="
+      - cd client
+      - npm run build
+      - echo "=== Build complete ==="
+
+  post_build:
+    commands:
+      - echo "=== Syncing to S3 ==="
+      - cd client
+      - aws s3 sync build/ s3://$FRONTEND_BUCKET --delete --exact-timestamps
+      - aws s3 cp s3://$FRONTEND_BUCKET/index.html s3://$FRONTEND_BUCKET/index.html
+        --metadata-directive REPLACE
+        --cache-control "no-cache, no-store, must-revalidate"
+        --content-type "text/html"
+      - echo "=== Invalidating CloudFront cache ==="
+      - aws cloudfront create-invalidation
+        --distribution-id $CLOUDFRONT_DISTRIBUTION_ID
+        --paths "/*"
+      - echo "=== Frontend deployment complete ==="
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: client/build
+  discard-paths: no
+
+cache:
+  paths:
+    - client/node_modules/**/*
