@@ -3,11 +3,10 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      nodejs: 18
+      nodejs: 20
     commands:
       - echo "=== Installing frontend dependencies ==="
-      - cd client
-      - npm ci --prefer-offline
+      - npm ci --prefix client --prefer-offline
 
   pre_build:
     commands:
@@ -17,14 +16,12 @@ phases:
   build:
     commands:
       - echo "=== Building React app ==="
-      - cd client
-      - npm run build
+      - npm run build --prefix client
 
   post_build:
     commands:
       - echo "=== Syncing to S3 ==="
-      - cd client
-      - aws s3 sync build/ s3://$FRONTEND_BUCKET --delete --exact-timestamps
+      - aws s3 sync client/build/ s3://$FRONTEND_BUCKET --delete --exact-timestamps
       - aws s3 cp s3://$FRONTEND_BUCKET/index.html s3://$FRONTEND_BUCKET/index.html --metadata-directive REPLACE --cache-control "no-cache, no-store, must-revalidate" --content-type "text/html"
       - echo "=== Invalidating CloudFront cache ==="
       - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
