@@ -6,8 +6,7 @@ phases:
       nodejs: 18
     commands:
       - echo "=== Installing backend dependencies ==="
-      - cd server
-      - npm ci --only=production --prefer-offline
+      - npm ci --prefix server --only=production --prefer-offline
 
   pre_build:
     commands:
@@ -18,17 +17,23 @@ phases:
 
   build:
     commands:
-      - echo "=== Packaging backend for CodeDeploy ==="
-      - chmod +x server/scripts/*.sh 2>/dev/null || true
+      - echo "=== Restructuring artifact for CodeDeploy ==="
+      - mkdir -p deploy/scripts deploy/app
+      - cp server/appspec.yml deploy/appspec.yml
+      - cp server/scripts/*.sh deploy/scripts/
+      - chmod +x deploy/scripts/*.sh
+      - rsync -a --exclude='.git' server/ deploy/app/
 
   post_build:
     commands:
-      - echo "=== Backend build complete ==="
+      - echo "=== Build complete ==="
+      - ls -la deploy/
+      - ls deploy/scripts/
 
 artifacts:
   files:
-    - server/**/*
-    - server/appspec.yml
+    - "**/*"
+  base-directory: deploy
   discard-paths: no
 
 cache:

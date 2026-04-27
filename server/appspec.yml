@@ -2,26 +2,26 @@ version: 0.0
 os: linux
 
 files:
-  - source: /server
+  - source: /app
     destination: /opt/campusarena/server
 
 hooks:
   BeforeInstall:
-    - location: server/scripts/before_install.sh
+    - location: scripts/before_install.sh
       timeout: 60
       runas: root
 
   AfterInstall:
-    - location: server/scripts/after_install.sh
+    - location: scripts/after_install.sh
       timeout: 120
       runas: root
 
   ApplicationStart:
-    - location: server/scripts/start_app.sh
+    - location: scripts/start_app.sh
       timeout: 60
       runas: root
 
   ValidateService:
-    - location: server/scripts/validate_service.sh
+    - location: scripts/validate_service.sh
       timeout: 60
       runas: root
