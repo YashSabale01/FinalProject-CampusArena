@@ -3,39 +3,36 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      nodejs: 18
+      nodejs: 20
     commands:
-      - echo "=== Installing backend dependencies ==="
-      - npm ci --prefix server --only=production --prefer-offline
+      - echo "=== Installing frontend dependencies ==="
+      - npm ci --prefix client --prefer-offline
 
   pre_build:
     commands:
-      - echo "=== Pre-build checks ==="
-      - node -v
-      - npm -v
+      - echo "API URL is $REACT_APP_API_URL"
       - echo "Build started at $(date)"
 
   build:
     commands:
-      - echo "=== Restructuring artifact for CodeDeploy ==="
-      - mkdir -p deploy/scripts deploy/app
-      - cp server/appspec.yml deploy/appspec.yml
-      - cp server/scripts/*.sh deploy/scripts/
-      - chmod +x deploy/scripts/*.sh
-      - rsync -a --exclude='.git' server/ deploy/app/
+      - echo "=== Building React app ==="
+      - npm run build --prefix client
 
   post_build:
     commands:
-      - echo "=== Build complete ==="
-      - ls -la deploy/
-      - ls deploy/scripts/
+      - echo "=== Syncing to S3 ==="
+      - aws s3 sync client/build/ s3://$FRONTEND_BUCKET --delete --exact-timestamps
+      - aws s3 cp s3://$FRONTEND_BUCKET/index.html s3://$FRONTEND_BUCKET/index.html --metadata-directive REPLACE --cache-control "no-cache, no-store, must-revalidate" --content-type "text/html"
+      - echo "=== Invalidating CloudFront ==="
+      - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
+      - echo "=== Frontend deploy complete ==="
 
 artifacts:
   files:
     - "**/*"
-  base-directory: deploy
+  base-directory: client/build
   discard-paths: no
 
 cache:
   paths:
-    - server/node_modules/**/*
+    - client/node_modules/**/*
