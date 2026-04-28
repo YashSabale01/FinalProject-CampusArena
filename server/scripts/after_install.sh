@@ -16,15 +16,6 @@ JWT_SECRET=$(aws ssm get-parameter --name /campusarena/JWT_SECRET --region $REGI
 STRIPE_PK=$(aws ssm get-parameter --name /campusarena/STRIPE_PUBLISHABLE_KEY --region $REGION --query Parameter.Value --output text 2>/dev/null)
 STRIPE_SK=$(aws ssm get-parameter --name /campusarena/STRIPE_SECRET_KEY --region $REGION --query Parameter.Value --output text 2>/dev/null)
 
-# If SSM fetch failed, restore from backup
-if [ -z "$MONGODB_URI" ] && [ -f /tmp/campusarena.env.bak ]; then
-  echo "SSM fetch failed — restoring .env from backup"
-  cp /tmp/campusarena.env.bak $APP_DIR/.env
-  chmod 600 $APP_DIR/.env
-  echo "=== AfterInstall complete (from backup) ==="
-  exit 0
-fi
-
 # If SSM worked, write fresh .env
 if [ -n "$MONGODB_URI" ]; then
   echo "Writing .env from SSM..."
@@ -41,28 +32,23 @@ MAX_FILE_SIZE=5242880
 UPLOAD_PATH=./uploads
 AWS_REGION=${REGION}
 ENVEOF
-  chmod 600 $APP_DIR/.env
   echo ".env written from SSM successfully"
+
+# SSM failed — try backup from before_install
+elif [ -f /tmp/campusarena.env.bak ]; then
+  echo "SSM failed — restoring .env from backup"
+  cp /tmp/campusarena.env.bak $APP_DIR/.env
+  echo "=== AfterInstall complete (from backup) ==="
+
+# Both failed — cannot proceed safely
 else
-  # Last resort — hardcode (only if SSM and backup both fail)
-  echo "WARNING: SSM and backup both failed — writing hardcoded .env"
-  cat > $APP_DIR/.env << ENVEOF
-MONGODB_URI=mongodb+srv://campusarena:Campus123@cluster0.i8pb3l1.mongodb.net/campusarena?retryWrites=true&w=majority
-JWT_SECRET=7fK!92kLm@#xPq8$ZrT6vW1yN3sUe%Q9
-PORT=8000
-NODE_ENV=production
-FRONTEND_URL=https://d1ua6bzb34kwo5.cloudfront.net
-DEFAULT_ADMIN_PASSWORD=Admin@123
-STRIPE_PUBLISHABLE_KEY=pk_test_51ST5KBRs46vuf9mZdmJElOQjXGJVIdArpIuZrAL584qsYQ2KV9uYyJUMVNU4N26jTTHKWkJ6fNhC5mSvuFiWtpcy00B2DQ5ulB
-STRIPE_SECRET_KEY=sk_test_51ST5KBRs46vuf9mZw1yd8WSUnH6314woM44FYOTOrsGE1TiJ91f9cuzKrB6JIQh4rU3mWLqmFBmS47zEY1JOjZBM00X98ZepiN
-MAX_FILE_SIZE=5242880
-UPLOAD_PATH=./uploads
-AWS_REGION=${REGION}
-ENVEOF
-  chmod 600 $APP_DIR/.env
+  echo "ERROR: SSM fetch failed and no backup found."
+  echo "Fix: ensure EC2 IAM role has ssm:GetParameter permission for /campusarena/* in ap-south-1"
+  echo "Then retry the deployment."
+  exit 1
 fi
 
-# Fix ownership
+chmod 600 $APP_DIR/.env
 chown -R ec2-user:ec2-user $APP_DIR
 chmod 600 $APP_DIR/.env
 
